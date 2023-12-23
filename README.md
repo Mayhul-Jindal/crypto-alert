@@ -1,0 +1,11 @@
+# Dev todos
+- [ ] API --> alert/create read(status, paginated, filter) update delete 
+- [ ] No test (to remind myself)
+- [ ] Binance websocket go
+- [ ] Email using SMTP
+- [ ] Redis for cache(fetch all alert)
+- [ ] JWT token
+- [ ] Postgres as a database
+- [ ] Kafka as a messqge broker for the task to send email
+- [ ] docker-compose
+- [ ] System design
