@@ -1,15 +1,34 @@
 package main
 
-func main(){
+import (
+	"log"
+	"os"
+	"time"
 
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file:", err)
+	}
+
+	producer, err := NewKafkaProducer(
+		[]string{
+			os.Getenv("KAFKA_ADDRESS"),
+		}, 
+		os.Getenv("KAFKA_TOPIC"),
+	)
+	if err != nil {
+		log.Fatal("Error setting up kafka:", err)
+	}
+
+	for i := 0; i < 10; i++ {
+		producer.Send(i, 100*i)
+		time.Sleep(10 * time.Second)
+	}
 }
-
-
-
-
-
-
-
 
 
 

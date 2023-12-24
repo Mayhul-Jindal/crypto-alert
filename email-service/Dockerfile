@@ -9,17 +9,16 @@ RUN go mod download
 
 COPY . .
 RUN go mod tidy
-RUN go build -o alert-service .
-RUN chmod +x alert-service
+RUN go build -o email-service .
+RUN chmod +x email-service
 
 # Final stage
 FROM alpine:3.15
 
 WORKDIR /app
 
-COPY --from=builder /app/alert-service .
+COPY --from=builder /app/email-service .
 COPY --from=builder /app/.env .
 
-EXPOSE 3000
 
-CMD [ "./alert-service" ]
+CMD [ "./email-service" ]

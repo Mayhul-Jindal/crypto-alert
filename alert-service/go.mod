@@ -2,10 +2,13 @@ module alert-service
 
 go 1.21.4
 
-require golang.org/x/net v0.19.0
+require (
+	github.com/IBM/sarama v1.42.1
+	github.com/joho/godotenv v1.5.1
+	golang.org/x/net v0.19.0 // indirect
+)
 
 require (
-	github.com/IBM/sarama v1.42.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.4.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect

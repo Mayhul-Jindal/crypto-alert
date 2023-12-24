@@ -28,8 +28,9 @@
 - [X] sorted set redis
 - [ ] creating a bucket by rounding vs simple query (test btrees capabilities)
 - [ ] kafka
-  - [ ] topic - messages are stored here
-  - [ ] topic can be devided into partitions to increase availability
+  - [ ] `topic` stores messages
+  - [ ] topic can be devided into `partitions` to increase availability and throughput
+  - [ ] replication factor decided wether the message in topic is replicated to multiple partitions or not
 
 
 
