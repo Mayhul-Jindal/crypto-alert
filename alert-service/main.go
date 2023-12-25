@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
+	database "alert-service/database/sqlc"
+
+	"github.com/go-playground/validator"
 	"github.com/joho/godotenv"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -14,77 +20,54 @@ func main() {
 		log.Fatal("Error loading .env file:", err)
 	}
 
-	producer, err := NewKafkaProducer(
-		[]string{
-			os.Getenv("KAFKA_ADDRESS"),
-		}, 
-		os.Getenv("KAFKA_TOPIC"),
-	)
+	// graceful shutdown
+	mainCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	postgres, conn, err := database.NewPostresDB(context.TODO(), os.Getenv("POSTGRES_ADDRESS"))
 	if err != nil {
-		log.Fatal("Error setting up kafka:", err)
+		log.Fatal("Error connecting to database:", err)
+	}
+	defer conn.Close(context.TODO())
+
+	token, err := NewPasetoMaker(os.Getenv("TOKEN_SYMMETRIC_KEY"))
+	if err != nil {
+		log.Fatal("Error creating token maker:", err)
 	}
 
-	for i := 0; i < 10; i++ {
-		producer.Send(i, 100*i)
-		time.Sleep(10 * time.Second)
+	validator := validator.New()
+
+	authSvc := NewAuthSvc(postgres, token, 10000)
+
+	api := NewAPI(":3000", token, authSvc, validator).Run(mainCtx)
+
+	g, gCtx := errgroup.WithContext(mainCtx)
+	g.Go(func() error {
+		log.Println("starting server on port", "3000")
+		return api.ListenAndServe()
+	})
+	g.Go(func() error {
+		<-gCtx.Done()
+		log.Println("shutting down server...")
+		return api.Shutdown(context.Background())
+	})
+
+	if err := g.Wait(); err != nil {
+		log.Fatal(err)
 	}
+
+	// producer, err := NewKafkaProducer(
+	// 	[]string{
+	// 		os.Getenv("KAFKA_ADDRESS"),
+	// 	},
+	// 	os.Getenv("KAFKA_TOPIC"),
+	// )
+	// if err != nil {
+	// 	log.Fatal("Error setting up kafka:", err)
+	// }
+
+	// for i := 0; i < 10; i++ {
+	// 	producer.Send(i, 100*i)
+	// 	time.Sleep(10 * time.Second)
+	// }
 }
-
-
-
-
-
-
-// import (
-// 	"fmt"
-// 	"io"
-// 	"net/http"
-
-// 	"golang.org/x/net/websocket"
-// )
-
-// type Server struct {
-// 	conn map[*websocket.Conn]bool
-// }
-
-// func NewServer() *Server {
-// 	return &Server{
-// 		conn: make(map[*websocket.Conn]bool),
-// 	}
-// }
-
-// func (s *Server) handleWs(ws *websocket.Conn) {
-// 	fmt.Println("New conn:", ws.LocalAddr())
-
-// 	s.conn[ws] = true
-// 	defer ws.Close()
-// 	defer delete(s.conn, ws)
-
-// 	s.readLoop(ws)
-// }
-
-// func (s *Server) readLoop(ws *websocket.Conn) {
-// 	buf := make([]byte, 1024)
-// 	addr := ws.LocalAddr()
-// 	for {
-// 		n, err := ws.Read(buf)
-// 		if err != nil {
-// 			if err == io.EOF {
-// 				fmt.Println("EOF")
-// 				return
-// 			}
-
-// 			fmt.Println("read error", err)
-// 			continue
-// 		}
-
-// 		fmt.Println(addr, "-->", string(buf[:n]))
-// 		ws.Write([]byte("hello from server"))
-// 	}
-// }
-
-// func main() {
-// 	server := NewServer()
-// 	http.Handle("/ws", websocket.Handler(server.handleWs))
-// 	http.ListenAndServe(":3000", nil)
-// }

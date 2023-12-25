@@ -18,10 +18,12 @@
 - [ ] Email using SMTP
 - [ ] Redis for cache(fetch all alert)
 - [ ] JWT token
+  - [ ] Add validation
 - [ ] Postgres as a database
 - [ ] Kafka as a messqge broker for the task to send email
 - [ ] docker-compose
 
+users alerts are accepted even if cryptoWatcher is down
 # dev notes
 - [X] priority queue ??!
 - [X] btrees ?!?
