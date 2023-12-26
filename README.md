@@ -10,7 +10,7 @@
 
 # Crypto Alert System
 - A complete system to create alerts for crypto currency prices.
-- `No frameworks` are used. Everything is architected in `Go` using hex architecture and DDD design principles.
+- `No frameworks` are used. Everything is architected in `Go` from scratch.
 - Follow the setup instructions to run the project.
 - Then after creating a demo alert, don't forget to check your spam email for the alert notification :) 
 
