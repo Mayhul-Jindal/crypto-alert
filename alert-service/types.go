@@ -8,6 +8,14 @@ import (
 	"github.com/aead/chacha20poly1305"
 )
 
+type contextKey string
+
+const (
+	Route contextKey = "route"
+	Method contextKey = "method"
+)
+
+
 type currency string
 
 const (

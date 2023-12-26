@@ -8,11 +8,21 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-playground/validator"
+	"github.com/rs/zerolog"
 )
+
+var logger zerolog.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+	Level(zerolog.TraceLevel).
+	With().
+	Timestamp().
+	Caller().
+	Logger()
 
 type API struct {
 	listenAddr string
@@ -224,6 +234,9 @@ type ApiError struct {
 
 func (a *API) handle(next Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(context.WithValue(r.Context(), Route, r.URL.Path))
+		r = r.WithContext(context.WithValue(r.Context(), Method, r.Method))
+
 		if err := next(w, r); err != nil {
 			switch err {
 			case ErrBadRequest, ErrNoAuthHeader, ErrInvalidAuthHeader, ErrUnsupportedAuthType, ErrUserAlreadyExists, ErrDuplicateAlert, ErrAlertNotFound:
@@ -259,13 +272,11 @@ func (a *API) authMiddleware(next Handler) Handler {
 
 		fields := strings.Fields(authorizationHeader)
 		if len(fields) < 2 {
-			log.Println("3")
 			return ErrInvalidAuthHeader
 		}
 
 		authorizationType := strings.ToLower(fields[0])
 		if authorizationType != "bearer" {
-			log.Println("4")
 			return ErrUnsupportedAuthType
 		}
 
@@ -300,9 +311,18 @@ func writeJSON(ctx context.Context, w http.ResponseWriter, s int, v any) error {
 
 	// centralized logging
 	if apiErr, ok := v.(ApiError); ok {
-		log.Println("api error", apiErr.Error)
+		logger.Error().
+			Int("status", s).
+			Str("route", ctx.Value(Route).(string)).
+			Str("method", ctx.Value(Method).(string)).
+			Str("err", apiErr.Error).
+			Send()
 	} else {
-		log.Println("response", v)
+		logger.Info().
+			Int("status", s).
+			Str("route", ctx.Value(Route).(string)).
+			Str("method", ctx.Value(Method).(string)).
+			Send()
 	}
 
 	return json.NewEncoder(w).Encode(v)

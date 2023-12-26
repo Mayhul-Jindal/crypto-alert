@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	database "alert-service/database/sqlc"
@@ -114,7 +115,7 @@ func (c *cryptoWatcher) Run(ctx context.Context) error {
 			return ctx.Err()
 
 		case err := <-c.errch:
-			log.Println(err)
+			logger.Error().Str("err", err.Error())
 		}
 	}
 }
@@ -134,7 +135,10 @@ func (c *cryptoWatcher) fillMarket(ctx context.Context) {
 		}
 
 		c.market[currency(streamResponse.Stream)] = streamResponse.Data.Price
-
+		logger.Info().
+			Str("currency", streamResponse.Stream).
+			Str("price", streamResponse.Data.Price).
+			Send()
 	}
 }
 
@@ -153,7 +157,11 @@ func (c *cryptoWatcher) startComparing(ctx context.Context, curr currency) {
 			if err != nil {
 				c.errch <- err
 			} else {
-				log.Println("targets", targets)
+				logger.Info().
+					Str("currency", string(curr)).
+					Str("price", c.market[curr]).
+					Str("alertIDs", strings.Join(targets, " ")).
+					Send()
 			}
 
 			// todo update state

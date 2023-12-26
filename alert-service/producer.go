@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/IBM/sarama"
 )
 
@@ -40,7 +38,12 @@ func (k *kafkaProducer) Send(id string, price string) error {
 	}
 
 	partition, offset, err := k.producer.SendMessage(msg)
-	log.Println(partition, offset, msg, err)
+	logger.Info().
+		Int32("partition", partition).
+		Int64("offset", offset).
+		Str("id", id).
+		Str("price", price).
+		Send()
 
 	return err
 }
