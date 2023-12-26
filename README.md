@@ -6,9 +6,13 @@
   - [Database Design](#database-design)
     - [Postgres](#postgres)
     - [Redis](#redis)
-- [todos](#todos)
+- [Todos](#todos)
 
 # Crypto Alert System
+- A complete system to create alerts for crypto currency prices.
+- `No frameworks` are used. Everything is architected in `Go` using hex architecture and DDD design principles.
+- Follow the setup instructions to run the project.
+- Then after creating a demo alert, don't forget to check your spam email for the alert notification :) 
 
 ## Setup
 
@@ -52,7 +56,7 @@ https://www.postman.com/mission-physicist-26981670/workspace/crypto-alert-system
 
 
 
-# todos
+# Todos
 - [X] Create a rest API endpoint for the user’s to create an alert `alerts/create/`
 - [X] Create a rest API endpoint for the user’s to delete an alert `alerts/delete/`
 - [X] Create a rest API endpoint to `fetch all the alerts` that the user has created.
@@ -60,7 +64,7 @@ https://www.postman.com/mission-physicist-26981670/workspace/crypto-alert-system
 - [X] `Paginate` the response.
 - [X] Include `filter` options based on the status of the alerts
 - [X] binance’s `websocket` connection to get real time price updates
-- [X]When the price of the coin reaches the price specified by the users, send an email to the user that the target price has been hit `smtp`
+- [X] When the price of the coin reaches the price specified by the users, send an email to the user that the target price has been hit `smtp`
 - [X] Add a caching layer `redis`
 - [X] Add user authentication to the endpoints. Use `JWT` tokens.
 - [X] Go
