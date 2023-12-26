@@ -43,6 +43,7 @@ func main() {
 		log.Fatal("Error setting up kafka:", err)
 	}
 
+	log.Println("Starting consumer...")
 	ctx := context.Background()
 	log.Fatal(consumer.Process(ctx))
 }

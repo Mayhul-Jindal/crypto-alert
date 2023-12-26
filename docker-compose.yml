@@ -2,16 +2,19 @@ version: "3.8"
 
 
 # For developement purposes I am not using vloumes and custom networks (using default driver instead)
-
 services:
 
-    # email-service:
-  #   build: ./email-service
-  #   image: email-service:1.0
-  #   container_name: email-service
-  #   depends_on:
-  #     - kafka
-  #     - postgres
+  email-service:
+    build:
+      context: ./email-service
+      dockerfile: Dockerfile
+    image: email-service:latest
+    container_name: email-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
   alert-service:
     build:

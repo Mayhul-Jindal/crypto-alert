@@ -27,4 +27,4 @@ COPY database/migration ./database/migration
 
 EXPOSE 3000
 
-CMD [ "./alert-service" ]
+CMD migrate -path ./database/migration -database "postgresql://postgres:postgres@postgres:5432/crypto-alert?sslmode=disable" -verbose up && ./alert-service

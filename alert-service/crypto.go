@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	database "alert-service/database/sqlc"
@@ -28,15 +27,16 @@ type StreamResponse struct {
 }
 
 type cryptoWatcher struct {
-	market map[currency]string
-	ws     *websocket.Conn
-	errch  chan error
+	market     *SafeMap
+	currencies []currency
+	ws         *websocket.Conn
+	errch      chan error
 
 	// throttling my market readers for demo purposes
 	ticker *time.Ticker
 
-	cache Cacher
-	db    database.Querier
+	cache    Cacher
+	db       database.Querier
 	producer Producer
 }
 
@@ -46,10 +46,11 @@ func NewCryptoWatcher(ctx context.Context, currencies []currency, cache Cacher, 
 		return nil, err
 	}
 
+	safemap := NewSafeMap()
+
 	// map init
-	market := make(map[currency]string)
 	for _, curr := range currencies {
-		market[curr] = "0"
+		safemap.Set(curr, "0")
 	}
 
 	// prepring subscribe request payload
@@ -85,12 +86,13 @@ func NewCryptoWatcher(ctx context.Context, currencies []currency, cache Cacher, 
 	}
 
 	return &cryptoWatcher{
-		market: market,
-		ws:     c,
-		errch:  make(chan error),
-		ticker: time.NewTicker(100 * time.Millisecond),
-		cache:  cache,
-		db:     db,
+		market:   safemap,
+		currencies: currencies,
+		ws:       c,
+		errch:    make(chan error),
+		ticker:   time.NewTicker(100 * time.Millisecond),
+		cache:    cache,
+		db:       db,
 		producer: producer,
 	}, nil
 }
@@ -104,7 +106,7 @@ func (c *cryptoWatcher) Run(ctx context.Context) error {
 	go c.fillMarket(ctx)
 
 	// start comparing with target price of users
-	for curr := range c.market {
+	for _, curr := range c.currencies {
 		go c.startComparing(ctx, curr)
 	}
 
@@ -134,39 +136,44 @@ func (c *cryptoWatcher) fillMarket(ctx context.Context) {
 			c.errch <- err
 		}
 
-		c.market[currency(streamResponse.Stream)] = streamResponse.Data.Price
-		logger.Info().
-			Str("currency", streamResponse.Stream).
-			Str("price", streamResponse.Data.Price).
-			Send()
+		c.market.Set(currency(streamResponse.Stream), streamResponse.Data.Price)
+		// logger.Info().
+		// 	Str("currency", streamResponse.Stream).
+		// 	Str("price", streamResponse.Data.Price).
+		// 	Send()
 	}
 }
 
 func (c *cryptoWatcher) startComparing(ctx context.Context, curr currency) {
 	// reaading market price after tick time
 	for range c.ticker.C {
-		switch c.market[curr] {
-
+		price, ok := c.market.Get(curr)
+		if !ok {
+			logger.Error().
+				Str("msg", "unknown currency").
+				Send()
+			break
+		} 
+		
+		switch price {
 		// skips when in memory market is not filled yet
 		case "0":
 			continue
 
 		default:
 			// first get all targets from gt from 0 to current price
-			targets, err := c.cache.GetTargets(ctx, curr, true, c.market[curr])
+			targets, err := c.cache.GetTargets(ctx, curr, true, price)
 			if err != nil {
 				c.errch <- err
-			} else {
-				logger.Info().
-					Str("currency", string(curr)).
-					Str("price", c.market[curr]).
-					Str("alertIDs", strings.Join(targets, " ")).
-					Send()
 			}
 
-			// todo update state
-
 			for _, ID := range targets {
+				logger.Info().
+					Str("currency", string(curr)).
+					Str("price", price).
+					Str("alertID", ID).
+					Send()
+
 				id, err := strconv.ParseInt(ID, 10, 64)
 				if err != nil {
 					c.errch <- err
@@ -182,7 +189,7 @@ func (c *cryptoWatcher) startComparing(ctx context.Context, curr currency) {
 				}
 
 				// send to kafka
-				err = c.producer.Send(ID, c.market[curr])
+				err = c.producer.Send(ID, price)
 				if err != nil {
 					c.errch <- err
 				}
