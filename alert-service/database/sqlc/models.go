@@ -11,9 +11,10 @@ import (
 type Alert struct {
 	ID        int64     `json:"id"`
 	UserID    int64     `json:"user_id"`
-	Crypro    string    `json:"crypro"`
+	Crypto    string    `json:"crypto"`
 	Price     float64   `json:"price"`
 	Direction bool      `json:"direction"`
+	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

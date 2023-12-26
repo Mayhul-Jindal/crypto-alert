@@ -8,9 +8,10 @@ CREATE TABLE "Users" (
 CREATE TABLE "Alerts" (
   "id" bigserial PRIMARY KEY,
   "user_id" bigint NOT NULL,
-  "crypro" varchar NOT NULL,
+  "crypto" varchar NOT NULL,
   "price" float NOT NULL,
   "direction" boolean NOT NULL,
+  "status" varchar NOT NULL DEFAULT 'created',
   "created_at" timestamptz NOT NULL DEFAULT 'now()'
 );
 

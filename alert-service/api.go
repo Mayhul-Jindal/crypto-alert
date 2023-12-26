@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -17,14 +19,16 @@ type API struct {
 	token      Maker
 	auth       Auther
 	validator  *validator.Validate
+	alert      Alerter
 }
 
-func NewAPI(listenAddr string, token Maker, auth Auther, validator *validator.Validate) *API {
+func NewAPI(listenAddr string, token Maker, auth Auther, validator *validator.Validate, alert Alerter) *API {
 	return &API{
 		listenAddr: listenAddr,
 		token:      token,
 		auth:       auth,
 		validator:  validator,
+		alert:      alert,
 	}
 }
 
@@ -40,7 +44,11 @@ func (a *API) Run(ctx context.Context) *http.Server {
 
 	// private routes
 	mux.Route("/alerts", func(mux chi.Router) {
-		mux.Post("/", a.handle(a.authMiddleware(a.createAlert)))
+		mux.Post("/create", a.handle(a.authMiddleware(a.createAlert)))
+		mux.Get("/read", a.handle(a.authMiddleware(a.readAlert)))
+		mux.Get("/read/filter", a.handle(a.authMiddleware(a.readFilterAlert)))
+		mux.Put("/update", a.handle(a.authMiddleware(a.updateAlert)))
+		mux.Delete("/delete", a.handle(a.authMiddleware(a.deleteAlert)))
 	})
 
 	server := &http.Server{
@@ -70,7 +78,7 @@ func (a *API) signUp(w http.ResponseWriter, r *http.Request) error {
 
 	err = a.validator.Struct(req)
 	if err != nil {
-		return ErrBadRequest
+		return NewErrValidation(err)
 	}
 
 	resp, err := a.auth.SignUp(r.Context(), req)
@@ -91,7 +99,7 @@ func (a *API) login(w http.ResponseWriter, r *http.Request) error {
 
 	err = a.validator.Struct(req)
 	if err != nil {
-		return ErrBadRequest
+		return NewErrValidation(err)
 	}
 
 	resp, err := a.auth.Login(r.Context(), req)
@@ -104,24 +112,108 @@ func (a *API) login(w http.ResponseWriter, r *http.Request) error {
 
 // Create Alert handler
 func (a *API) createAlert(w http.ResponseWriter, r *http.Request) error {
-	w.Write([]byte("Create Alert"))
-	return nil
+	var req CreateAlertRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return ErrBadRequest
+	}
+
+	err = a.validator.Struct(req)
+	if err != nil {
+		return NewErrValidation(err)
+	}
+
+	resp, err := a.alert.Create(r.Context(), req)
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(r.Context(), w, http.StatusOK, resp)
 }
 
-// // Read Alert handler
-// func handleRead(w http.ResponseWriter, r *http.Request) {
-// 	w.Write([]byte("Read Alert"))
-// }
+// Read Alert handler
+func (a *API) readAlert(w http.ResponseWriter, r *http.Request) error {
+	var req ReadAllAlertsRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return ErrBadRequest
+	}
 
-// // Update Alert handler
-// func handleUpdate(w http.ResponseWriter, r *http.Request) {
-// 	w.Write([]byte("Update Alert"))
-// }
+	err = a.validator.Struct(req)
+	if err != nil {
+		return NewErrValidation(err)
+	}
 
-// // Delete Alert handler
-// func handleDelete(w http.ResponseWriter, r *http.Request) {
-// 	w.Write([]byte("Delete Alert"))
-// }
+	resp, err := a.alert.ReadAll(r.Context(), req)
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(r.Context(), w, http.StatusOK, resp)
+}
+
+// Filter alerts
+func (a *API) readFilterAlert(w http.ResponseWriter, r *http.Request) error {
+	var req ReadFilerRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return ErrBadRequest
+	}
+
+	err = a.validator.Struct(req)
+	if err != nil {
+		return NewErrValidation(err)
+	}
+
+	resp, err := a.alert.ReadFilter(r.Context(), req)
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(r.Context(), w, http.StatusOK, resp)
+}
+
+// update alert handler
+func (a *API) updateAlert(w http.ResponseWriter, r *http.Request) error {
+	var req UpdateAlertRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return ErrBadRequest
+	}
+
+	err = a.validator.Struct(req)
+	if err != nil {
+		return NewErrValidation(err)
+	}
+
+	resp, err := a.alert.Update(r.Context(), req)
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(r.Context(), w, http.StatusOK, resp)
+}
+
+// Delete Alert handler
+func (a *API) deleteAlert(w http.ResponseWriter, r *http.Request) error {
+	var req DeleteAlertRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return ErrBadRequest
+	}
+
+	err = a.validator.Struct(req)
+	if err != nil {
+		return NewErrValidation(err)
+	}
+
+	err = a.alert.Delete(r.Context(), req)
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(r.Context(), w, http.StatusOK, nil)
+}
 
 // centralize error handling
 type Handler func(w http.ResponseWriter, r *http.Request) error
@@ -137,18 +229,26 @@ func (a *API) handle(next Handler) http.HandlerFunc {
 			case ErrBadRequest, ErrNoAuthHeader, ErrInvalidAuthHeader, ErrUnsupportedAuthType:
 				writeJSON(r.Context(), w, http.StatusBadRequest, ApiError{Error: err.Error()})
 
-			case ErrNotAuthorized:
+			case ErrNotAuthorized, ErrTokenExpired, ErrInvalidToken:
 				writeJSON(r.Context(), w, http.StatusUnauthorized, ApiError{Error: err.Error()})
 
 			default:
-				log.Println("critical internal server error:", err)
-				writeJSON(r.Context(), w, http.StatusInternalServerError, ApiError{Error: "internal server error"})
+				if vErr, ok := err.(*ErrValidation); ok {
+					writeJSON(r.Context(), w, http.StatusBadRequest, ApiError{Error: vErr.Error()})
+				} else {
+					log.Println("critical internal server error:", err)
+					writeJSON(r.Context(), w, http.StatusInternalServerError, ApiError{Error: "internal server error"})
+				}
 			}
 		}
 	}
 }
 
 // middlewares
+type Request struct {
+	UserID int64 `json:"user_id"`
+}
+
 func (a *API) authMiddleware(next Handler) Handler {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		authorizationHeader := r.Header.Get("authorization")
@@ -175,7 +275,20 @@ func (a *API) authMiddleware(next Handler) Handler {
 			return err
 		}
 
-		r = r.WithContext(context.WithValue(r.Context(), tokenPayload, payload))
+		var req Request
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(body, &req)
+		if err != nil {
+			return ErrBadRequest
+		}
+		if payload.UserID != req.UserID {
+			return ErrNotAuthorized
+		}
+
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
 		return next(w, r)
 	}
 }

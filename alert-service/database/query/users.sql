@@ -10,3 +10,7 @@ RETURNING *;
 select * from "Users"
 where id = $1
 limit 1;
+
+-- name: GetUserByEmail :one
+select * from "Users"
+where email = $1;

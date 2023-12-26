@@ -8,11 +8,6 @@ import (
 	"github.com/aead/chacha20poly1305"
 )
 
-type contextKey string
-
-const (
-	tokenPayload contextKey = "payload"
-)
 
 type currency string
 
@@ -22,6 +17,7 @@ const (
 	SOL currency = "solusdt@trade"
 )
 
+// for auth service
 type SignUpUserRequest struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=7"`
@@ -44,6 +40,40 @@ type LoginUserResponse struct {
 	User                 SignUpUserResponse `json:"user"`
 }
 
+// for alert service
+type CreateAlertRequest struct {
+	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
+	Currency string `json:"currency" validate:"required,oneof=btcusdt@trade ethusdt@trade solusdt@trade"`
+	Price    float64  `json:"price" validate:"required,number,min=0"`
+	Direction bool	 `json:"direction" validate:"required"`
+}
+
+type ReadAllAlertsRequest struct {
+	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
+	Limit	int32    `json:"limit" validate:"required,number,min=1,max=100"`
+	Offset	int32    `json:"offset" validate:"min=0"`
+}
+
+type ReadFilerRequest struct {
+	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
+	Status  string   `json:"status" validate:"required,oneof=created triggered deleted completed"`
+	Limit	int32    `json:"limit" validate:"required,number,min=1,max=100"`
+	Offset	int32    `json:"offset" validate:"min=0"`
+}
+
+type UpdateAlertRequest struct {
+	AlertID  int64    `json:"alert_id" validate:"required,number,min=1"`
+	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
+	Currency string `json:"currency" validate:"required,oneof=btcusdt@trade ethusdt@trade solusdt@trade"`
+	Price    float64  `json:"price" validate:"required,number,min=0"`
+	Direction bool	 `json:"direction"`
+}
+
+type DeleteAlertRequest struct {
+	AlertID  int64    `json:"alert_id" validate:"required,number,min=1"`
+	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
+}
+
 var (
 	ErrTokenExpired        = errors.New("token has expired")
 	ErrInvalidToken        = errors.New("token is invalid")
@@ -54,4 +84,17 @@ var (
 	ErrBadRequest          = errors.New("bad request")
 	ErrNotAuthorized       = errors.New("not authorized")
 	ErrSubscriptionFailed  = errors.New("subscription failed")
+	ErrUserAlreadyExists = errors.New("user already exists")
 )
+
+type ErrValidation struct {
+	Err error
+}
+
+func NewErrValidation(err error) *ErrValidation {
+	return &ErrValidation{Err: err}
+}
+
+func (e *ErrValidation) Error() string {
+	return e.Err.Error()
+}

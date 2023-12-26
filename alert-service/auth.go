@@ -32,6 +32,15 @@ func NewAuthSvc(db database.Querier, token Maker, tokenExp time.Duration) Auther
 }
 
 func (a *auther) SignUp(ctx context.Context, req SignUpUserRequest) (SignUpUserResponse, error) {
+	res, err := a.db.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		return SignUpUserResponse{}, err
+	}
+
+	if res.Email == req.Email {
+		return SignUpUserResponse{}, ErrUserAlreadyExists
+	}
+
 	hashedPassword, err := hashPassword(req.Password)
 	if err != nil {
 		return SignUpUserResponse{}, err
@@ -42,7 +51,7 @@ func (a *auther) SignUp(ctx context.Context, req SignUpUserRequest) (SignUpUserR
 		HashedPassword: hashedPassword,
 	}
 
-	res, err := a.db.CreateUser(ctx, createUserParams)
+	res, err = a.db.CreateUser(ctx, createUserParams)
 	if err != nil {
 		return SignUpUserResponse{}, err
 	}

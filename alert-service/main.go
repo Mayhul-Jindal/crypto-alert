@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	database "alert-service/database/sqlc"
 
@@ -37,9 +38,16 @@ func main() {
 
 	validator := validator.New()
 
-	authSvc := NewAuthSvc(postgres, token, 10000)
+	authSvc := NewAuthSvc(postgres, token, 1*time.Hour)
 
-	api := NewAPI(":3000", token, authSvc, validator).Run(mainCtx)
+	redis, err := NewRedis(os.Getenv("REDIS_ADDRESS"))
+	if err != nil {
+		log.Fatal("Error connecting to redis:", err)
+	}
+
+	alertSvc := NewAlertService(redis, postgres)
+
+	api := NewAPI(":3000", token, authSvc, validator, alertSvc).Run(mainCtx)
 
 	g, gCtx := errgroup.WithContext(mainCtx)
 	g.Go(func() error {
