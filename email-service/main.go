@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
+	database "email-service/database/sqlc"
 	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 )
-
-// ogux ynug bnjb bkad
 
 func main() {
 	err := godotenv.Load()
@@ -22,7 +21,15 @@ func main() {
 		os.Getenv("GMAIL_PASSWORD"),
 	)
 
+	// initializing postgres database
+	postgres, conn, err := database.NewPostresDB(context.TODO(), os.Getenv("POSTGRES_ADDRESS"))
+	if err != nil {
+		log.Fatal("Error connecting to database:", err)
+	}
+	defer conn.Close(context.TODO())
+
 	consumer, err := NewKafkaConsumer(
+		postgres,
 		gmail,
 		[]string{
 			os.Getenv("KAFKA_ADDRESS"),

@@ -18,29 +18,20 @@ type Auther interface {
 }
 
 type auther struct {
-	db database.Querier
-	token Maker
+	db       database.Querier
+	token    Maker
 	tokenExp time.Duration
 }
 
 func NewAuthSvc(db database.Querier, token Maker, tokenExp time.Duration) Auther {
 	return &auther{
-		db: db,
-		token: token,
+		db:       db,
+		token:    token,
 		tokenExp: tokenExp,
 	}
 }
 
 func (a *auther) SignUp(ctx context.Context, req SignUpUserRequest) (SignUpUserResponse, error) {
-	res, err := a.db.GetUserByEmail(ctx, req.Email)
-	if err != nil {
-		return SignUpUserResponse{}, err
-	}
-
-	if res.Email == req.Email {
-		return SignUpUserResponse{}, ErrUserAlreadyExists
-	}
-
 	hashedPassword, err := hashPassword(req.Password)
 	if err != nil {
 		return SignUpUserResponse{}, err
@@ -51,9 +42,9 @@ func (a *auther) SignUp(ctx context.Context, req SignUpUserRequest) (SignUpUserR
 		HashedPassword: hashedPassword,
 	}
 
-	res, err = a.db.CreateUser(ctx, createUserParams)
+	res, err := a.db.CreateUser(ctx, createUserParams)
 	if err != nil {
-		return SignUpUserResponse{}, err
+		return SignUpUserResponse{}, ErrUserAlreadyExists
 	}
 
 	return SignUpUserResponse{
@@ -88,7 +79,6 @@ func (a *auther) Login(ctx context.Context, req LoginUserRequest) (LoginUserResp
 	}, nil
 }
 
-
 // hashPassword returns the bcrypt hash of the password
 func hashPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -102,4 +92,3 @@ func hashPassword(password string) (string, error) {
 func checkPassword(password string, hashedPassword string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
-

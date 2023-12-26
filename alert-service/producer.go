@@ -8,7 +8,7 @@ import (
 )
 
 type Producer interface {
-	Send(id int, price int) error
+	Send(id string, price int) error
 }
 
 type kafkaProducer struct {
@@ -33,10 +33,10 @@ func NewKafkaProducer(addr []string, topic string) (Producer, error) {
 	}, nil
 }
 
-func (k *kafkaProducer) Send(id int, price int) error {
+func (k *kafkaProducer) Send(id string, price int) error {
 	msg := &sarama.ProducerMessage{
 		Topic: k.topic,
-		Key:   sarama.StringEncoder(strconv.Itoa(id)),
+		Key:   sarama.StringEncoder(id),
 		Value: sarama.StringEncoder(strconv.Itoa(price)),
 	}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	database "email-service/database/sqlc"
 	"context"
 	"log"
 
@@ -13,12 +14,13 @@ type Consumer interface {
 }
 
 type kafkaConsumer struct {
+	db database.Querier
 	email Emailer
 	cg    sarama.ConsumerGroup
 	topics []string
 }
 
-func NewKafkaConsumer(email Emailer, addr []string, group string, topics []string) (Consumer, error) {
+func NewKafkaConsumer(db database.Querier, email Emailer, addr []string, group string, topics []string) (Consumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 	
@@ -28,6 +30,7 @@ func NewKafkaConsumer(email Emailer, addr []string, group string, topics []strin
 	}
 
 	return &kafkaConsumer{
+		db: db,
 		email: email,
 		cg:    consumerGroup,
 		topics: topics,

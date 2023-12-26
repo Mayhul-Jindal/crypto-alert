@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"strconv"
 	"time"
 
 	"nhooyr.io/websocket"
@@ -25,24 +24,26 @@ type StreamResponse struct {
 }
 
 type cryptoWatcher struct {
-	market map[currency]float64
+	market map[currency]string
 	ws     *websocket.Conn
 	errch  chan error
 
 	// throttling my market readers for demo purposes
 	ticker *time.Ticker
+
+	cache Cacher
 }
 
-func NewCryptoWatcher(ctx context.Context, currencies []currency) (*cryptoWatcher, error) {
+func NewCryptoWatcher(ctx context.Context, currencies []currency, cache Cacher) (*cryptoWatcher, error) {
 	c, _, err := websocket.Dial(ctx, "wss://stream.binance.com/stream", nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// map init
-	market := make(map[currency]float64)
+	market := make(map[currency]string)
 	for _, curr := range currencies {
-		market[curr] = 0
+		market[curr] = "0"
 	}
 
 	// prepring subscribe request payload
@@ -82,7 +83,12 @@ func NewCryptoWatcher(ctx context.Context, currencies []currency) (*cryptoWatche
 		ws:     c,
 		errch:  make(chan error),
 		ticker: time.NewTicker(100 * time.Millisecond),
+		cache:  cache,
 	}, nil
+}
+
+func (c *cryptoWatcher) Close() error {
+	return c.ws.Close(websocket.StatusNormalClosure, "")
 }
 
 func (c *cryptoWatcher) Run(ctx context.Context) error {
@@ -120,12 +126,9 @@ func (c *cryptoWatcher) fillMarket(ctx context.Context) {
 			c.errch <- err
 		}
 
-		price, err := strconv.ParseFloat(streamResponse.Data.Price, 64)
-		if err != nil {
-			c.errch <- err
-		}
+		c.market[currency(streamResponse.Stream)] = streamResponse.Data.Price
 
-		c.market[currency(streamResponse.Stream)] = price
+	
 	}
 }
 
@@ -133,12 +136,21 @@ func (c *cryptoWatcher) startComparing(curr currency) {
 	// reaading market price after tick time
 	for range c.ticker.C {
 		switch c.market[curr] {
-		case 0:
+
+		// skips when in memory market is not filled yet
+		case "0":
 			continue
 
 		default:
-			log.Println(curr, c.market[curr])
-			// todo compare with target price of users
+			// first get all targets from gt from 0 to current price
+			targets, err := c.cache.GetTargets(context.Background(), curr, true, c.market[curr])
+			if err != nil {
+				c.errch <- err
+			}else{
+				log.Println("targets", targets)
+			}
+
+			// todo update state
 		}
 	}
 }

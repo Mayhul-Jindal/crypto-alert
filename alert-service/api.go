@@ -226,7 +226,7 @@ func (a *API) handle(next Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := next(w, r); err != nil {
 			switch err {
-			case ErrBadRequest, ErrNoAuthHeader, ErrInvalidAuthHeader, ErrUnsupportedAuthType:
+			case ErrBadRequest, ErrNoAuthHeader, ErrInvalidAuthHeader, ErrUnsupportedAuthType, ErrUserAlreadyExists, ErrDuplicateAlert, ErrAlertNotFound:
 				writeJSON(r.Context(), w, http.StatusBadRequest, ApiError{Error: err.Error()})
 
 			case ErrNotAuthorized, ErrTokenExpired, ErrInvalidToken:

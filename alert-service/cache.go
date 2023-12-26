@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/redis/go-redis/v9"
 )
 
+
+
 type Cacher interface {
-	Get(ctx context.Context, key string) (string, error)
-	Set(ctx context.Context, key string, value string) error
+	AddAlert(ctx context.Context, alertID int64, crypto string, price float64, direction bool) error
+	GetTargets(ctx context.Context, crypto currency, direction bool, price string) ([]string, error)
 }
 
 type Redis struct {
@@ -27,10 +30,54 @@ func NewRedis(addr string) (Cacher, error) {
 	}, nil
 }
 
-func (r *Redis) Get(ctx context.Context, key string) (string, error) {
-	return r.client.Get(ctx, key).Result()
+func (r *Redis) AddAlert(ctx context.Context, alertID int64, crypto string, price float64, direction bool) error {
+	key := formKey(crypto, direction)
+	err := r.client.ZAdd(ctx, key, redis.Z{
+		Score:  price,
+		Member: fmt.Sprint(alertID),
+	}).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *Redis) Set(ctx context.Context, key string, value string) error {
-	return r.client.Set(ctx, key, value, 0).Err()
+func (r *Redis) GetTargets(ctx context.Context, crypto currency, direction bool, price string) ([]string, error) {
+    key := formKey(string(crypto), direction)
+    var min, max string
+
+    if direction {
+        min = "0"
+        max = price
+    } else {
+        min = price
+        max = "inf"
+    }
+
+    targets, err := r.client.ZRangeByScore(ctx, key, &redis.ZRangeBy{
+        Min: min,
+        Max: max,
+    }).Result()
+    if err != nil {
+        return nil, err
+    }
+
+	// delete the targets from ache using zrem
+	err = r.client.ZRemRangeByScore(ctx, key, min, max).Err()
+	if err != nil {
+		return nil, err
+	}
+
+    return targets, nil
+}
+
+
+// helper function
+func formKey(crypto string, direction bool) string {
+	if direction {
+		return crypto + ":" + "gt"
+	}
+
+	return crypto + ":" + "lt"
 }

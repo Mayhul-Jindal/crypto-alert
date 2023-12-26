@@ -8,7 +8,6 @@ import (
 	"github.com/aead/chacha20poly1305"
 )
 
-
 type currency string
 
 const (
@@ -42,36 +41,36 @@ type LoginUserResponse struct {
 
 // for alert service
 type CreateAlertRequest struct {
-	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
-	Currency string `json:"currency" validate:"required,oneof=btcusdt@trade ethusdt@trade solusdt@trade"`
-	Price    float64  `json:"price" validate:"required,number,min=0"`
-	Direction bool	 `json:"direction" validate:"required"`
+	UserID    int64   `json:"user_id" validate:"required,number,min=1"`
+	Currency  string  `json:"currency" validate:"required,oneof=btcusdt@trade ethusdt@trade solusdt@trade"`
+	Price     float64 `json:"price" validate:"required,number,min=0"`
+	Direction bool    `json:"direction" validate:"required"`
 }
 
 type ReadAllAlertsRequest struct {
-	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
-	Limit	int32    `json:"limit" validate:"required,number,min=1,max=100"`
-	Offset	int32    `json:"offset" validate:"min=0"`
+	UserID int64 `json:"user_id" validate:"required,number,min=1"`
+	Limit  int32 `json:"limit" validate:"required,number,min=1,max=100"`
+	Offset int32 `json:"offset" validate:"min=0"`
 }
 
 type ReadFilerRequest struct {
-	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
-	Status  string   `json:"status" validate:"required,oneof=created triggered deleted completed"`
-	Limit	int32    `json:"limit" validate:"required,number,min=1,max=100"`
-	Offset	int32    `json:"offset" validate:"min=0"`
+	UserID int64  `json:"user_id" validate:"required,number,min=1"`
+	Status string `json:"status" validate:"required,oneof=created triggered deleted completed"`
+	Limit  int32  `json:"limit" validate:"required,number,min=1,max=100"`
+	Offset int32  `json:"offset" validate:"min=0"`
 }
 
 type UpdateAlertRequest struct {
-	AlertID  int64    `json:"alert_id" validate:"required,number,min=1"`
-	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
-	Currency string `json:"currency" validate:"required,oneof=btcusdt@trade ethusdt@trade solusdt@trade"`
-	Price    float64  `json:"price" validate:"required,number,min=0"`
-	Direction bool	 `json:"direction"`
+	AlertID   int64   `json:"alert_id" validate:"required,number,min=1"`
+	UserID    int64   `json:"user_id" validate:"required,number,min=1"`
+	Currency  string  `json:"currency" validate:"required,oneof=btcusdt@trade ethusdt@trade solusdt@trade"`
+	Price     float64 `json:"price" validate:"required,number,min=0"`
+	Direction bool    `json:"direction"`
 }
 
 type DeleteAlertRequest struct {
-	AlertID  int64    `json:"alert_id" validate:"required,number,min=1"`
-	UserID   int64    `json:"user_id" validate:"required,number,min=1"`
+	AlertID int64 `json:"alert_id" validate:"required,number,min=1"`
+	UserID  int64 `json:"user_id" validate:"required,number,min=1"`
 }
 
 var (
@@ -84,7 +83,9 @@ var (
 	ErrBadRequest          = errors.New("bad request")
 	ErrNotAuthorized       = errors.New("not authorized")
 	ErrSubscriptionFailed  = errors.New("subscription failed")
-	ErrUserAlreadyExists = errors.New("user already exists")
+	ErrUserAlreadyExists   = errors.New("user already exists")
+	ErrDuplicateAlert      = errors.New("duplicate alert")
+	ErrAlertNotFound	   = errors.New("alert not found")
 )
 
 type ErrValidation struct {

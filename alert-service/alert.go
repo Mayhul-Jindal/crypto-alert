@@ -35,6 +35,8 @@ func NewAlertService(cache Cacher, db database.Querier) Alerter {
 	}
 }
 
+
+// alert is created in postgres, get alert id from postgres, push alert_id with price to redis sorted sets
 func (a *alert) Create(ctx context.Context, req CreateAlertRequest) (database.Alert, error) {
 	params := database.CreateAlertParams{
 		UserID:    req.UserID,
@@ -43,6 +45,11 @@ func (a *alert) Create(ctx context.Context, req CreateAlertRequest) (database.Al
 		Direction: req.Direction,
 	}
 	res, err := a.db.CreateAlert(ctx, params)
+	if err != nil {
+		return database.Alert{}, ErrDuplicateAlert
+	}
+
+	err = a.cache.AddAlert(ctx, res.ID, res.Crypto, res.Price, res.Direction)
 	if err != nil {
 		return database.Alert{}, err
 	}
@@ -82,7 +89,7 @@ func (a *alert) ReadFilter(ctx context.Context, req ReadFilerRequest) ([]databas
 func (a *alert) Update(ctx context.Context, req UpdateAlertRequest) (database.Alert, error) {
 	res, err := a.db.GetAlertByID(ctx, req.AlertID)
 	if err != nil {
-		return database.Alert{}, err
+		return database.Alert{}, ErrAlertNotFound
 	}
 
 	if res.UserID != req.UserID {
