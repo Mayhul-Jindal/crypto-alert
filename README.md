@@ -1,19 +1,56 @@
 - [Crypto Alert System](#crypto-alert-system)
   - [Setup](#setup)
   - [System design](#system-design)
+    - [High level](#high-level)
+    - [Low level](#low-level)
   - [Database Design](#database-design)
-  - [Deep dive](#deep-dive)
+    - [Postgres](#postgres)
+    - [Redis](#redis)
 - [todos](#todos)
 
 # Crypto Alert System
 
 ## Setup
 
+1. Install docker and docker-compose on your system by following official docs
+
+2. Clone the repo
+```sh
+git clone https://github.com/Mayhul-Jindal/crypto-alert
+```
+
+3. Run docker-compose up
+```sh
+docker-compose up
+```
+
+4. Use this postman instance to play with the API
+```
+https://www.postman.com/mission-physicist-26981670/workspace/crypto-alert-system/request/19360543-0bcd8c0d-640c-431f-bd15-fd70bd1fcc8d?tab=headers
+```
+
 ## System design
+
+### High level
+![](./public/system-design.png)
+
+### Low level
+
+- Alert Service
+![](./public/alert-service.png)
+
+- Email Service
+![](./public/email-service.png)
 
 ## Database Design
 
-## Deep dive
+### Postgres
+![](./public/postgres-design.png)
+
+### Redis
+![](./public/redis-design.png)
+
+
 
 # todos
 - [X] Create a rest API endpoint for the user’s to create an alert `alerts/create/`
@@ -31,6 +68,6 @@
 - [X] `Kafka` as a message broker for the task to send emails /print the output
 - [X] Bundle everything inside a docker-compose file so it’s easier for us to test.
 - [X] Document your solution in README.md file. Consider adding the following details
-- [] Steps to run the project (eg: docker-compose up)
-- [] Document the endpoints
-- [] Document the solution for sending alerts
+- [X] Steps to run the project (eg: docker-compose up)
+- [X] Document the endpoints
+- [X] Document the solution for sending alerts
