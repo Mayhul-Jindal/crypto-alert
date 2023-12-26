@@ -16,6 +16,16 @@ const (
 	SOL currency = "solusdt@trade"
 )
 
+type state string
+
+const (
+	Created   state = "created"
+	Triggered state = "triggered"
+	Deleted   state = "deleted"
+	Completed state = "completed"
+)
+
+
 // for auth service
 type SignUpUserRequest struct {
 	Email    string `json:"email" validate:"required,email"`

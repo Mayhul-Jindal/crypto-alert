@@ -2,13 +2,12 @@ package main
 
 import (
 	"log"
-	"strconv"
 
 	"github.com/IBM/sarama"
 )
 
 type Producer interface {
-	Send(id string, price int) error
+	Send(id string, price string) error
 }
 
 type kafkaProducer struct {
@@ -33,15 +32,15 @@ func NewKafkaProducer(addr []string, topic string) (Producer, error) {
 	}, nil
 }
 
-func (k *kafkaProducer) Send(id string, price int) error {
+func (k *kafkaProducer) Send(id string, price string) error {
 	msg := &sarama.ProducerMessage{
 		Topic: k.topic,
 		Key:   sarama.StringEncoder(id),
-		Value: sarama.StringEncoder(strconv.Itoa(price)),
+		Value: sarama.StringEncoder(price),
 	}
 
 	partition, offset, err := k.producer.SendMessage(msg)
 	log.Println(partition, offset, msg, err)
-	
+
 	return err
 }

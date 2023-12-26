@@ -16,4 +16,12 @@ func TestSQL(t *testing.T) {
 	email, err := postgres.GetUserEmailByAlertID(context.Background(), 1)
 	assert.NoError(t, err)
 	t.Log(email)
+
+	params := UpdateAlertStatusParams{
+		ID:     1,
+		Status: "completed",
+	}
+
+	err = postgres.UpdateAlertStatus(context.Background(), params)
+	assert.NoError(t, err)
 }

@@ -53,8 +53,19 @@ func main() {
 	// initializing alert service
 	alertSvc := NewAlertService(redis, postgres)
 
+	// initializing kafka producer
+	kafkaProducer, err := NewKafkaProducer(
+		[]string{
+			os.Getenv("KAFKA_ADDRESS"),
+		},
+		os.Getenv("KAFKA_TOPIC"),
+	)
+	if err != nil {
+		log.Fatal("Error setting up kafka:", err)
+	}
+
 	// initializing crypto watcher
-	cryptoWatcher, err := NewCryptoWatcher(mainCtx, []currency{BTC, ETH, SOL}, redis)
+	cryptoWatcher, err := NewCryptoWatcher(mainCtx, []currency{BTC, ETH, SOL}, redis, postgres, kafkaProducer)
 	if err != nil {
 		log.Fatal("Error creating crypto watcher:", err)
 	}

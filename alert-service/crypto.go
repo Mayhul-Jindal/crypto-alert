@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strconv"
 	"time"
+
+	database "alert-service/database/sqlc"
 
 	"nhooyr.io/websocket"
 )
@@ -32,9 +35,11 @@ type cryptoWatcher struct {
 	ticker *time.Ticker
 
 	cache Cacher
+	db    database.Querier
+	producer Producer
 }
 
-func NewCryptoWatcher(ctx context.Context, currencies []currency, cache Cacher) (*cryptoWatcher, error) {
+func NewCryptoWatcher(ctx context.Context, currencies []currency, cache Cacher, db database.Querier, producer Producer) (*cryptoWatcher, error) {
 	c, _, err := websocket.Dial(ctx, "wss://stream.binance.com/stream", nil)
 	if err != nil {
 		return nil, err
@@ -84,6 +89,8 @@ func NewCryptoWatcher(ctx context.Context, currencies []currency, cache Cacher) 
 		errch:  make(chan error),
 		ticker: time.NewTicker(100 * time.Millisecond),
 		cache:  cache,
+		db:     db,
+		producer: producer,
 	}, nil
 }
 
@@ -97,7 +104,7 @@ func (c *cryptoWatcher) Run(ctx context.Context) error {
 
 	// start comparing with target price of users
 	for curr := range c.market {
-		go c.startComparing(curr)
+		go c.startComparing(ctx, curr)
 	}
 
 	// handles errors, can be a potential centalized thingy
@@ -128,11 +135,10 @@ func (c *cryptoWatcher) fillMarket(ctx context.Context) {
 
 		c.market[currency(streamResponse.Stream)] = streamResponse.Data.Price
 
-	
 	}
 }
 
-func (c *cryptoWatcher) startComparing(curr currency) {
+func (c *cryptoWatcher) startComparing(ctx context.Context, curr currency) {
 	// reaading market price after tick time
 	for range c.ticker.C {
 		switch c.market[curr] {
@@ -143,14 +149,36 @@ func (c *cryptoWatcher) startComparing(curr currency) {
 
 		default:
 			// first get all targets from gt from 0 to current price
-			targets, err := c.cache.GetTargets(context.Background(), curr, true, c.market[curr])
+			targets, err := c.cache.GetTargets(ctx, curr, true, c.market[curr])
 			if err != nil {
 				c.errch <- err
-			}else{
+			} else {
 				log.Println("targets", targets)
 			}
 
 			// todo update state
+
+			for _, ID := range targets {
+				id, err := strconv.ParseInt(ID, 10, 64)
+				if err != nil {
+					c.errch <- err
+					continue
+				}
+				params := database.UpdateAlertStatusParams{
+					ID:     id,
+					Status: string(Triggered),
+				}
+				err = c.db.UpdateAlertStatus(ctx, params)
+				if err != nil {
+					c.errch <- err
+				}
+
+				// send to kafka
+				err = c.producer.Send(ID, c.market[curr])
+				if err != nil {
+					c.errch <- err
+				}
+			}
 		}
 	}
 }

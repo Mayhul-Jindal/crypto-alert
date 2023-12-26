@@ -1,11 +1,22 @@
 package main
 
 import (
-	database "email-service/database/sqlc"
 	"context"
 	"log"
+	"strconv"
+
+	database "email-service/database/sqlc"
 
 	"github.com/IBM/sarama"
+)
+
+type state string
+
+const (
+	Created   state = "created"
+	Triggered state = "triggered"
+	Deleted   state = "deleted"
+	Completed state = "completed"
 )
 
 // kafka consumer code here
@@ -14,25 +25,25 @@ type Consumer interface {
 }
 
 type kafkaConsumer struct {
-	db database.Querier
-	email Emailer
-	cg    sarama.ConsumerGroup
+	db     database.Querier
+	email  Emailer
+	cg     sarama.ConsumerGroup
 	topics []string
 }
 
 func NewKafkaConsumer(db database.Querier, email Emailer, addr []string, group string, topics []string) (Consumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
-	
+
 	consumerGroup, err := sarama.NewConsumerGroup(addr, group, config)
 	if err != nil {
 		return nil, err
 	}
 
 	return &kafkaConsumer{
-		db: db,
-		email: email,
-		cg:    consumerGroup,
+		db:     db,
+		email:  email,
+		cg:     consumerGroup,
 		topics: topics,
 	}, nil
 }
@@ -41,15 +52,41 @@ func (*kafkaConsumer) Setup(sarama.ConsumerGroupSession) error   { return nil }
 func (*kafkaConsumer) Cleanup(sarama.ConsumerGroupSession) error { return nil }
 func (k *kafkaConsumer) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
-		log.Println(string(msg.Key), string(msg.Value))
+		alertID := string(msg.Key)
+		price := string(msg.Value)
+
+		alertIDInt64, err := strconv.ParseInt(alertID, 10, 64)
+		if err != nil {
+			log.Println("Error parsing alertID:", err)
+			continue
+		}
+
+		email, err := k.db.GetUserEmailByAlertID(sess.Context(), alertIDInt64)
+		if err != nil {
+			log.Println("Error getting user email:", err)
+			continue
+		}
+
 		k.email.send(
-			"Crypto Alert", 
-			string(msg.Value), 
-			[]string{"mayhuljindal@gmail.com"}, 
-			nil, 
-			nil, 
+			"Crypto Alert",
+			"Your alert has been triggered! The price is now "+price+".",
+			[]string{email},
+			nil,
+			nil,
 			nil,
 		)
+
+		// Mark message as processed
+		params := database.UpdateAlertStatusParams{
+			ID:     alertIDInt64,
+			Status: string(Completed),
+		}
+		err = k.db.UpdateAlertStatus(sess.Context(), params)
+		if err != nil {
+			log.Println("Error updating alert status:", err)
+			continue
+		}
+		
 		sess.MarkMessage(msg, "")
 	}
 
