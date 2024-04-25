@@ -64,6 +64,7 @@ func main() {
 		log.Fatal("Error setting up kafka:", err)
 	}
 
+	
 	// initializing crypto watcher
 	cryptoWatcher, err := NewCryptoWatcher(mainCtx, []currency{BTC, ETH, SOL}, redis, postgres, kafkaProducer)
 	if err != nil {

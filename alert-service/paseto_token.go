@@ -8,8 +8,11 @@ import (
 	"github.com/o1egl/paseto"
 )
 
-// Different types of error returned by the Verify function
-
+/*
+Normally these 3 fields should be enough. 
+However, if we want to have a mechanism to invalidate some specific tokens in case they are leaked, 
+we need to add an ID field to uniquely identify each token.
+*/
 type Payload struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    int64     `json:"user_id"`

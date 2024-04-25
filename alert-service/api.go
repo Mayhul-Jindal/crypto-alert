@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var logger zerolog.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+var logger zerolog.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}).
 	Level(zerolog.TraceLevel).
 	With().
 	Timestamp().
@@ -299,7 +299,7 @@ func (a *API) authMiddleware(next Handler) Handler {
 			return ErrNotAuthorized
 		}
 
-		r.Body = io.NopCloser(bytes.NewBuffer(body))
+		r.Body = io.NopCloser(bytes.NewReader(body))
 		return next(w, r)
 	}
 }

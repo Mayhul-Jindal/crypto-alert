@@ -75,3 +75,5 @@ https://www.postman.com/mission-physicist-26981670/workspace/crypto-alert-system
 - [X] Steps to run the project (eg: docker-compose up)
 - [X] Document the endpoints
 - [X] Document the solution for sending alerts
+- [ ] edraw max --> work breakdown structure
+- [ ] 

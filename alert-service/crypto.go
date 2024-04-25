@@ -137,10 +137,10 @@ func (c *cryptoWatcher) fillMarket(ctx context.Context) {
 		}
 
 		c.market.Set(currency(streamResponse.Stream), streamResponse.Data.Price)
-		// logger.Info().
-		// 	Str("currency", streamResponse.Stream).
-		// 	Str("price", streamResponse.Data.Price).
-		// 	Send()
+		logger.Info().
+			Str("currency", streamResponse.Stream).
+			Str("price", streamResponse.Data.Price).
+			Send()
 	}
 }
 

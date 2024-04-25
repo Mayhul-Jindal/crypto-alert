@@ -11,7 +11,6 @@ import (
 )
 
 // mein yaha peh hee jwt aur login signup banara hun maa chuday
-
 type Auther interface {
 	SignUp(ctx context.Context, req SignUpUserRequest) (SignUpUserResponse, error)
 	Login(ctx context.Context, req LoginUserRequest) (LoginUserResponse, error)
